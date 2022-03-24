@@ -6,39 +6,42 @@ class sphere : public hitable
 {
 public:
 	sphere(){}
-	sphere(vec3 cen, float r) : center(cen), radius(r) {};
+	sphere(vec3 cen, double r) : center(cen), radius(r) {};
 
-	virtual bool hit(const ray& r, float tmin, float tmax, hit_record& rec) const override;
+	virtual bool hit(const ray& r, double tmin, double tmax, hit_record& rec) const override;
 public:
 	vec3 center;
-	float radius;
+	double radius;
 };
 
-bool sphere::hit(const ray& r, float t_min, float t_max, hit_record& rec) const
+bool sphere::hit(const ray& r, double t_min, double t_max, hit_record& rec) const
 {
 	vec3 oc = r.origin() - center;
-	float a = dot(r.direction(), r.direction());
-	float b = dot(oc, r.direction());
-	float c = dot(oc, oc) - radius * radius;
-	float discriminant = b * b -  a * c;
-	if (discriminant > 0)
+	double a = dot(r.direction(), r.direction());
+	double half_b = dot(oc, r.direction());
+	double c = oc.squared_length() - radius * radius;
+	
+	auto discriminant = half_b * half_b - a * c;
+	if (discriminant < 0)
 	{
-		float temp = (-b - sqrt(b * b - a * c)) / a;
-		if (temp < t_max && temp > t_min)
+		return false;
+	}
+
+	auto sqrtd = sqrt(discriminant);
+
+	auto root = (-half_b - sqrtd) / a;
+	if (root < t_min || t_max < root)
+	{
+		root = (-half_b + sqrtd) / a;
+		if (root < t_min || t_max < root)
 		{
-			rec.t = temp;
-			rec.p = r.point_at_parameter(rec.t);
-			rec.normal = (rec.p - center) / radius;
-			return true;
-		}
-		temp = (-b + sqrt(b * b - a * c)) / a;
-		if (temp <t_max && temp>t_min)
-		{
-			rec.t = temp;
-			rec.p = r.point_at_parameter(rec.t);
-			rec.normal = (rec.p - center) / radius;
-			return true;
+			return false;
 		}
 	}
-	return false;
+
+	rec.t = root;
+	rec.p = r.point_at_parameter(rec.t);
+	vec3 outward_normal = (rec.p - center) / radius;
+	rec.set_face_normal(r, outward_normal);
+	return true;
 }

@@ -11,7 +11,7 @@ public:
 		list_size = n;
 	}
 
-	virtual bool hit(const ray& r, float tmin, float tmax, hit_record& rec) const override;
+	virtual bool hit(const ray& r, double tmin, double tmax, hit_record& rec) const override;
 
 public:
 	hitable** list;
