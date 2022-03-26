@@ -6,11 +6,16 @@ class ray
 {
 public:
 	ray(){}
-	ray(const vec3& a, const vec3& b) { A = a; B = b; }
-	vec3 origin() const { return A; }
-	vec3 direction()const { return B; }
-	vec3 point_at_parameter(double t) const { return A + t * B; }
+	ray(const vec3& a, const vec3& b) { orig = a; dir = b; }
+	vec3 origin() const { return orig; }
+	vec3 direction()const { return dir; }
+	vec3 point_at_parameter(double t) const { return orig + t * dir; }
+
+	vec3 at(double t) const
+	{
+		return orig + t * dir;
+	}
 public:
-	vec3 A;
-	vec3 B;
+	point3 orig;
+	vec3 dir;
 };

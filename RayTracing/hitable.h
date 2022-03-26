@@ -1,12 +1,15 @@
 #pragma once
 #include "ray.h"
 
+class material;
 struct hit_record
 {
 	double t;
 	vec3 p;
 	vec3 normal;
 	bool front_face;
+
+	shared_ptr<material> mat_ptr;
 
 	inline void set_face_normal(const ray& r, const vec3& outward_normal)
 	{

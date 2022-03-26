@@ -6,6 +6,7 @@
 #include "float.h"
 #include "color.h"
 #include "camera.h"
+#include "material.h"
 
 double hit_sphere(const vec3& center, double radius, const ray& r)
 {
@@ -39,22 +40,25 @@ vec3 ray_color(const ray& r)
 	return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
 }
 
-vec3 ray_color(const ray& r, hitable* world,int depth)
+vec3 ray_color(const ray& r, hitable& world,int depth)
 {
-	if (depth <=0)
-	{
-		return color(0, 0, 0);
-	}
 	hit_record rec;
-	if (world->hit(r,0.01, infinity,rec))
+
+	if (depth <= 0)
+		return color(0, 0, 0);
+
+	if (world.hit(r, 0.001, infinity, rec)) 
 	{
-		point3 target = rec.p + rec.normal + random_in_unit_sphere();
-		return 0.5 * ray_color(ray(rec.p, target - rec.p), world,depth-1);
+		ray scattered;
+		color attenuation;
+		if (rec.mat_ptr->scatter(r, rec, attenuation, scattered))
+			return attenuation * ray_color(scattered, world, depth - 1);
+		return color(0, 0, 0);
 	}
 
 	vec3 unit_direction = unit_vector(r.direction());
-	double t = 0.5 * (unit_direction.y() + 1.0);
-	return (1.0 - t) * vec3(1.0, 1.0, 1.0) + t * vec3(0.5, 0.7, 1.0);
+	auto t = 0.5 * (unit_direction.y() + 1.0);
+	return (1.0 - t) * color(1.0, 1.0, 1.0) + t * color(0.5, 0.7, 1.0);
 }
 
 int main()
@@ -63,7 +67,7 @@ int main()
 
 	// image
 	const auto aspect_ratio = 16.0 / 9.0;
-	const int image_width = 400;
+	const int image_width = 1920;
 	const int image_height = static_cast<int>(image_width / aspect_ratio);
 	const int sample_per_pixel = 100;
 	const int max_depth = 50;
@@ -73,19 +77,31 @@ int main()
 	std::ofstream ostrm(filename);
 
 	// Camera
-	camera cam;
+	point3 lookfrom(3, 3, 2);
+	point3 lookat(0, 0, -1);
+	vec3 vup(0, 1, 0);
+	auto dist_to_focus = (lookfrom - lookat).length();
+	auto aperture = 1.0;
+	camera cam(lookfrom, lookat, vup, 30, aspect_ratio, aperture, dist_to_focus);
 
 	// Render
 
 	ostrm << "P3\n" << image_width << ' ' << image_height << "\n255\n";
 
 
+	auto material_ground = make_shared<lambertian>(color(0.8, 0.8, 0.0));
+	auto material_center = make_shared<lambertian>(color(0.7, 0.3, 0.3));
+	auto material_left = make_shared<dielectric>(1.5);
+	auto material_right = make_shared<metal>(color(0.8, 0.6, 0.2),1);
 
-	hitable* list[2];
-	list[0] = new sphere(vec3(0, 0, -1), 0.5);
-	list[1] = new sphere(vec3(0, -100.5, -1), 100);
+	hitable_list world;
 
-	hitable* world = new hitable_list(list, 2);
+	world.add(make_shared<sphere>(point3(0.0, -100.5, -1.0), 100.0, material_ground));
+	world.add(make_shared<sphere>(point3(0.0, 0.0, -1.0), 0.5, material_center));
+	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), 0.5, material_left));
+	world.add(make_shared<sphere>(point3(-1.0, 0.0, -1.0), -0.4, material_left));
+	world.add(make_shared<sphere>(point3(1.0, 0.0, -1.0), 0.5, material_right));
+
 
 	for (int j = image_height - 1; j >= 0; --j) {
 		for (int i = 0; i < image_width; ++i) {
